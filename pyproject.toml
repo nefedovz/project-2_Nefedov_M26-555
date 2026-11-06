@@ -1,7 +1,7 @@
 [project]
 name = "primitive-db"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "Primitive console database"
 readme = "README.md"
 authors = [
     { name = "nefedovz", email = "zakhar39@bk.ru" }
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-project = "primitive_db.main:main"
+database = "primitive_db.main:main"
 
 [build-system]
 requires = ["uv_build>=0.13.7,<0.14.0"]
