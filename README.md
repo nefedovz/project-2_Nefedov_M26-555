@@ -30,4 +30,4 @@
 ```
 
 ### Демонстрация
-
+[![asciicast](https://asciinema.org/a/MjY1vSHYT7ATf6TM.svg)](https://asciinema.org/a/MjY1vSHYT7ATf6TM)
