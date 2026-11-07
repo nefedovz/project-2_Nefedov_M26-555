@@ -30,4 +30,24 @@
 ```
 
 ### Демонстрация
+
 [![asciicast](https://asciinema.org/a/MjY1vSHYT7ATf6TM.svg)](https://asciinema.org/a/MjY1vSHYT7ATf6TM)
+
+## CRUD-операции
+
+| Команда | Описание |
+|---|---|
+| `insert into <таблица> values (<знач1>, <знач2>, ...)` | создать запись |
+| `select from <таблица>` | прочитать все записи |
+| `select from <таблица> where <столбец> = <значение>` | прочитать записи по условию |
+| `update <таблица> set <столбец> = <значение> where <столбец> = <значение>` | обновить записи |
+| `delete from <таблица> where <столбец> = <значение>` | удалить записи |
+| `info <таблица>` | информация о таблице |
+
+Строковые значения указываются в кавычках, логические — `true`/`false`.
+`ID` генерируется автоматически и не передаётся в `insert`.
+Данные каждой таблицы хранятся в `data/<имя_таблицы>.json`.
+
+### Демонстрация CRUD
+
+[![asciicast](https://asciinema.org/a/MUuhrZKg0FtojJ80.svg)](https://asciinema.org/a/MUuhrZKg0FtojJ80)
