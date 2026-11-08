@@ -2,6 +2,46 @@
 
 Простая консольная база данных на Python.
 
+## Требования
+
+- Python 3.12+
+- uv
+
+Установка uv (macOS / Linux):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+## Установка
+
+Устанавливает глобальную команду `database`:
+
+```bash
+uv tool install git+https://github.com/nefedovz/project-2_Nefedov_M26-555
+```
+
+
+## Запуск
+
+После установки:
+
+```bash
+database
+```
+
+Из папки проекта:
+
+```bash
+make run
+make project
+```
+
+## Удаление
+
+```bash
+uv tool uninstall project-2-nefedov-m26-555
+```
 
 ## Управление таблицами
 

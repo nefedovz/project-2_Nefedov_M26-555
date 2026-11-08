@@ -5,3 +5,6 @@
 .idea/
 db_meta.json
 data/
+*.pyc
+.DS_Store
+*.cast
