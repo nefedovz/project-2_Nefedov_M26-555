@@ -1,9 +1,8 @@
 import os
 
+from primitive_db.constants import ID_COLUMN, VALID_TYPES
 from primitive_db.decorators import confirm_action, handle_db_errors, log_time
 from primitive_db.utils import get_table_data_path, load_table_data
-
-VALID_TYPES = {"int": int, "str": str, "bool": bool}
 
 
 @handle_db_errors
@@ -15,15 +14,15 @@ def create_table(metadata: dict, table_name: str, columns: list[str]) -> dict:
         return metadata
 
     table_columns = {}
-    if "ID:int" not in columns:
-        table_columns["ID"] = "int"
+    if f"{ID_COLUMN}:int" not in columns:
+        table_columns[ID_COLUMN] = "int"
 
     for column in columns:
         name, sep, col_type = column.partition(":")
         if not sep or not name or col_type not in VALID_TYPES:
             raise ValueError(column)
-        if name == "ID" and col_type != "int":
-            print("Ошибка: Столбец ID должен иметь тип int.")
+        if name == ID_COLUMN and col_type != "int":
+            print(f"Ошибка: Столбец {ID_COLUMN} должен иметь тип int.")
             return metadata
         if name in table_columns:
             print(f'Ошибка: Столбец "{name}" повторяется.')
@@ -31,7 +30,9 @@ def create_table(metadata: dict, table_name: str, columns: list[str]) -> dict:
         table_columns[name] = col_type
 
     if len(table_columns) == 1:
-        print("Ошибка: Таблица должна содержать хотя бы один столбец кроме ID.")
+        print(
+            f"Ошибка: Таблица должна содержать хотя бы один столбец кроме {ID_COLUMN}."
+        )
         return metadata
 
     metadata[table_name] = table_columns
@@ -77,7 +78,7 @@ def insert(metadata: dict, table_name: str, values: list) -> list | None:
         return None
 
     columns = metadata[table_name]
-    data_columns = [name for name in columns if name != "ID"]
+    data_columns = [name for name in columns if name != ID_COLUMN]
     if len(values) != len(data_columns):
         print(
             f"Ошибка: Ожидается значений: {len(data_columns)}, получено: {len(values)}."
@@ -91,9 +92,9 @@ def insert(metadata: dict, table_name: str, values: list) -> list | None:
         record[name] = value
 
     table_data = load_table_data(table_name)
-    new_id = max((row["ID"] for row in table_data), default=0) + 1
-    table_data.append({"ID": new_id, **record})
-    print(f'Запись с ID={new_id} успешно добавлена в таблицу "{table_name}".')
+    new_id = max((row[ID_COLUMN] for row in table_data), default=0) + 1
+    table_data.append({ID_COLUMN: new_id, **record})
+    print(f'Запись с {ID_COLUMN}={new_id} успешно добавлена в таблицу "{table_name}".')
     return table_data
 
 

@@ -1,5 +1,5 @@
 [project]
-name = "primitive-db"
+name = "project-2_Nefedov_M26-555"
 version = "3.0.0"
 description = "Primitive console database"
 readme = "README.md"
@@ -13,6 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
+project = "primitive_db.main:main"
 database = "primitive_db.main:main"
 
 [build-system]
@@ -32,3 +33,6 @@ ignore = []
 dev = [
     "ruff>=0.17.3",
 ]
+
+[tool.uv.build-backend]
+module-name = "primitive_db"
