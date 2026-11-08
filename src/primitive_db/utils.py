@@ -19,12 +19,6 @@ def save_metadata(filepath: str, data: dict) -> None:
         json.dump(data, file, ensure_ascii=False, indent=4)
 
 
-def print_command_error(value: str) -> None:
-    """Print an invalid value error."""
-
-    print(f"Некорректное значение: {value}. Попробуйте снова.")
-
-
 def get_table_data_path(table_name: str) -> str:
     """Return path to the JSON file with table data."""
 
@@ -47,3 +41,9 @@ def save_table_data(table_name: str, data: list) -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(get_table_data_path(table_name), "w", encoding="utf-8") as file:
         json.dump(data, file, ensure_ascii=False, indent=4)
+
+
+def get_table_version(table_name: str) -> int:
+    """Return data file modification time, or 0 if the file does not exist."""
+    path = get_table_data_path(table_name)
+    return os.stat(path).st_mtime_ns if os.path.exists(path) else 0
