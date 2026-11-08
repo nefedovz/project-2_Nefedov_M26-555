@@ -9,20 +9,23 @@ from primitive_db.core import (
     drop_table,
     insert,
     list_tables,
+    matches,
     select,
     update,
     validate_clause,
 )
+from primitive_db.decorators import create_cacher, handle_db_errors
 from primitive_db.parser import parse_delete, parse_insert, parse_select, parse_update
 from primitive_db.utils import (
+    get_table_version,
     load_metadata,
     load_table_data,
-    print_command_error,
     save_metadata,
     save_table_data,
 )
 
 META_FILE = "db_meta.json"
+select_cache = create_cacher()
 
 
 def print_help() -> None:
@@ -62,7 +65,7 @@ def print_help() -> None:
 
 
 def table_exists(metadata: dict, table_name: str) -> bool:
-    """Check that table exists, print an error if not."""
+    """Check that table exists."""
 
     if table_name in metadata:
         return True
@@ -90,20 +93,22 @@ def handle_insert(metadata: dict, command: str) -> None:
 
 
 def handle_select(metadata: dict, command: str) -> None:
-    """Parse and execute a select command, print results as a table."""
+    """Parse and execute a select command with caching, print results."""
 
     table_name, where_clause = parse_select(command)
     if not table_exists(metadata, table_name):
         return
-    columns = metadata[table_name]
-    if where_clause and not validate_clause(columns, where_clause):
-        return
+    if where_clause:
+        validate_clause(metadata[table_name], where_clause)
 
-    rows = select(load_table_data(table_name), where_clause)
+    key = (table_name, repr(where_clause), get_table_version(table_name))
+    rows = select_cache(key, lambda: select(load_table_data(table_name), where_clause))
+    if rows is None:
+        return
     if not rows:
         print("Записи не найдены.")
         return
-    print_rows(columns, rows)
+    print_rows(metadata[table_name], rows)
 
 
 def handle_update(metadata: dict, command: str) -> None:
@@ -116,18 +121,19 @@ def handle_update(metadata: dict, command: str) -> None:
     if "ID" in set_clause:
         print("Ошибка: Столбец ID нельзя изменять.")
         return
-    if not validate_clause(columns, set_clause):
-        return
-    if not validate_clause(columns, where_clause):
-        return
+    validate_clause(columns, set_clause)
+    validate_clause(columns, where_clause)
 
     table_data = load_table_data(table_name)
-    ids = [row["ID"] for row in select(table_data, where_clause)]
+    ids = [row["ID"] for row in table_data if matches(row, where_clause)]
     if not ids:
         print("Записи не найдены.")
         return
 
-    save_table_data(table_name, update(table_data, set_clause, where_clause))
+    updated = update(table_data, set_clause, where_clause)
+    if updated is None:
+        return
+    save_table_data(table_name, updated)
     for record_id in ids:
         print(f'Запись с ID={record_id} в таблице "{table_name}" успешно обновлена.')
 
@@ -138,16 +144,18 @@ def handle_delete(metadata: dict, command: str) -> None:
     table_name, where_clause = parse_delete(command)
     if not table_exists(metadata, table_name):
         return
-    if not validate_clause(metadata[table_name], where_clause):
-        return
+    validate_clause(metadata[table_name], where_clause)
 
     table_data = load_table_data(table_name)
-    ids = [row["ID"] for row in select(table_data, where_clause)]
+    ids = [row["ID"] for row in table_data if matches(row, where_clause)]
     if not ids:
         print("Записи не найдены.")
         return
 
-    save_table_data(table_name, delete(table_data, where_clause))
+    remaining = delete(table_data, where_clause)
+    if remaining is None:
+        return
+    save_table_data(table_name, remaining)
     for record_id in ids:
         print(f'Запись с ID={record_id} успешно удалена из таблицы "{table_name}".')
 
@@ -158,24 +166,40 @@ def handle_info(metadata: dict, table_name: str) -> None:
     if not table_exists(metadata, table_name):
         return
     columns = metadata[table_name]
-    columns_str = ", ".join(f"{name}:{col_type}" for name, col_type in columns.items())
+    columns_str = ", ".join(f"{n}:{t}" for n, t in columns.items())
     print(f"Таблица: {table_name}")
     print(f"Столбцы: {columns_str}")
     print(f"Количество записей: {len(load_table_data(table_name))}")
 
 
-def execute(command: str, params: list, user_input: str, metadata: dict) -> None:
-    """Dispatch a command. Raise ValueError on invalid input."""
+@handle_db_errors
+def execute(user_input: str, metadata: dict) -> bool:
+    """Parse and run one command. Return False to exit."""
 
+    try:
+        args = shlex.split(user_input)
+    except ValueError:
+        raise ValueError(user_input) from None
+    if not args:
+        return True
+
+    command, *params = args
     match command:
+        case "exit":
+            return False
         case "create_table":
             if len(params) < 2:
                 raise ValueError(user_input)
-            save_metadata(META_FILE, create_table(metadata, params[0], params[1:]))
+            result = create_table(metadata, params[0], params[1:])
+            if result is not None:
+                save_metadata(META_FILE, result)
         case "drop_table":
             if len(params) != 1:
                 raise ValueError(user_input)
-            save_metadata(META_FILE, drop_table(metadata, params[0]))
+            if table_exists(metadata, params[0]):
+                result = drop_table(metadata, params[0])
+                if result is not None:
+                    save_metadata(META_FILE, result)
         case "list_tables":
             list_tables(metadata)
         case "insert":
@@ -194,11 +218,11 @@ def execute(command: str, params: list, user_input: str, metadata: dict) -> None
             print_help()
         case _:
             print(f"Функции {command} нет. Попробуйте снова.")
+    return True
 
 
 def run() -> None:
     """Run the main command loop."""
-
     print("\n***База данных***\n")
     print_help()
     print()
@@ -206,22 +230,6 @@ def run() -> None:
     while True:
         metadata = load_metadata(META_FILE)
         user_input = prompt.string(">>>Введите команду: ").strip()
-
-        try:
-            args = shlex.split(user_input)
-        except ValueError:
-            print_command_error(user_input)
-            print()
-            continue
-        if not args:
-            continue
-
-        command, *params = args
-        if command == "exit":
+        if execute(user_input, metadata) is False:
             break
-
-        try:
-            execute(command, params, user_input, metadata)
-        except ValueError as error:
-            print_command_error(str(error))
         print()
