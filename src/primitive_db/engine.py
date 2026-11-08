@@ -3,6 +3,7 @@ import shlex
 import prompt
 from prettytable import PrettyTable
 
+from primitive_db.constants import ID_COLUMN, META_FILE
 from primitive_db.core import (
     create_table,
     delete,
@@ -24,7 +25,6 @@ from primitive_db.utils import (
     save_table_data,
 )
 
-META_FILE = "db_meta.json"
 select_cache = create_cacher()
 
 
@@ -118,14 +118,14 @@ def handle_update(metadata: dict, command: str) -> None:
     if not table_exists(metadata, table_name):
         return
     columns = metadata[table_name]
-    if "ID" in set_clause:
-        print("Ошибка: Столбец ID нельзя изменять.")
+    if ID_COLUMN in set_clause:
+        print(f"Ошибка: Столбец {ID_COLUMN} нельзя изменять.")
         return
     validate_clause(columns, set_clause)
     validate_clause(columns, where_clause)
 
     table_data = load_table_data(table_name)
-    ids = [row["ID"] for row in table_data if matches(row, where_clause)]
+    ids = [row[ID_COLUMN] for row in table_data if matches(row, where_clause)]
     if not ids:
         print("Записи не найдены.")
         return
@@ -135,7 +135,10 @@ def handle_update(metadata: dict, command: str) -> None:
         return
     save_table_data(table_name, updated)
     for record_id in ids:
-        print(f'Запись с ID={record_id} в таблице "{table_name}" успешно обновлена.')
+        print(
+            f'Запись с {ID_COLUMN}={record_id} в таблице "{table_name}" '
+            f'успешно обновлена.'
+        )
 
 
 def handle_delete(metadata: dict, command: str) -> None:
@@ -147,7 +150,7 @@ def handle_delete(metadata: dict, command: str) -> None:
     validate_clause(metadata[table_name], where_clause)
 
     table_data = load_table_data(table_name)
-    ids = [row["ID"] for row in table_data if matches(row, where_clause)]
+    ids = [row[ID_COLUMN] for row in table_data if matches(row, where_clause)]
     if not ids:
         print("Записи не найдены.")
         return
@@ -157,7 +160,10 @@ def handle_delete(metadata: dict, command: str) -> None:
         return
     save_table_data(table_name, remaining)
     for record_id in ids:
-        print(f'Запись с ID={record_id} успешно удалена из таблицы "{table_name}".')
+        print(
+            f'Запись с {ID_COLUMN}={record_id} успешно '
+            f'удалена из таблицы "{table_name}".'
+        )
 
 
 def handle_info(metadata: dict, table_name: str) -> None:

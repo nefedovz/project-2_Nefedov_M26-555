@@ -15,8 +15,8 @@ wheels = [
 ]
 
 [[package]]
-name = "primitive-db"
-version = "1.0.0"
+name = "project-2-nefedov-m26-555"
+version = "3.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "prettytable" },
